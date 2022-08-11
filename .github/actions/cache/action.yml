@@ -1,0 +1,38 @@
+name: 'cache'
+
+inputs:
+  path:
+    type:     string
+    required: true
+  prefix:
+    type:     string
+    required: true
+  config:
+    type:     string
+    required: true
+
+outputs:
+  cache-hit:
+    value: ${{ steps.cache.outputs.cache-hit }}
+  cache-key:
+    value: ${{ steps.key.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    - name: "generate cache key"
+      id:   key
+      run: |
+        SUBMODULES=$(git submodule status | shasum -a1 | cut -d ' ' -f1)
+
+        KEY="${{ inputs.prefix }}"
+        KEY+="-${SUBMODULES}"
+        KEY+="-${{ hashFiles(inputs.config) }}"
+
+        echo "::set-output name=key::${KEY}"
+      shell: bash
+    - uses: actions/cache@v3
+      id:   cache
+      with:
+        path: ${{ inputs.path }}
+        key: ${{ steps.key.outputs.key }}

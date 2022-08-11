@@ -1,0 +1,44 @@
+name: 'build musl cross compiler'
+
+inputs:
+  config:
+    type:     string
+    required: true
+  target:
+    type:     string
+    required: true
+  output:
+    type:     string
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/cache
+      with:
+        path: musl-cross-make/sources
+        prefix: sources
+        config: config.${{ inputs.config }}.mak
+    - uses: ./.github/actions/cache
+      id:   cache
+      with:
+        path: ${{ inputs.output }}
+        prefix: ${{ inputs.config }}-${{ inputs.target }}
+        config: config.${{ inputs.config }}.mak
+    - name: "build musl cross compiler"
+      run: |
+        cp $CONFIG musl-cross-make/config.mak
+        make -C musl-cross-make &> build.log
+      env:
+        CONFIG: config.${{ inputs.config }}.mak
+        TARGET: ${{ inputs.target }}
+      shell: bash
+      if: steps.cache.outputs.cache-hit != 'true'
+    - name: "install musl cross compiler"
+      run: |
+        make -C musl-cross-make install
+      env:
+        TARGET: ${{ inputs.target }}
+        OUTPUT: ${{ inputs.output }}
+      shell: bash
+      if: steps.cache.outputs.cache-hit != 'true'

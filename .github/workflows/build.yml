@@ -1,0 +1,53 @@
+name: build
+
+on:
+  push:
+    branches: "*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        host:
+#          - aarch64-linux-musl
+          - x86_64-linux-musl
+        target:
+#          - aarch64-linux-musl
+#          - armv7-linux-musleabihf
+          - x86_64-linux-musl
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      # build bootstrap toolchain
+      - uses: ./.github/actions/build
+        name: "build bootstrap toolchain"
+        with:
+          config: "bootstrap"
+          target: ${{ matrix.host }}
+          output: ${{ github.workspace }}/bootstrap
+
+      # build final xcc toolchain
+      - uses: ./.github/actions/build
+        name: "build xcc toolchain"
+        with:
+          config: "toolchain"
+          target: ${{ matrix.target }}
+          output: ${{ github.workspace }}/toolchain/${{ matrix.target }}/opt/xcc
+        env:
+          BOOTSTRAP: ${{ github.workspace }}/bootstrap/bin/${{ matrix.host }}
+
+      # # upload xcc artifact
+      # - name: make artifact archive
+      #   run:  |
+      #     tar -czvf "${ARTIFACT}" -C "${PREFIX}" opt/xcc
+      #   env:
+      #     ARTIFACT: xcc-${{ matrix.host }}-${{ matrix.target }}.tar.gz
+      #     PREFIX: toolchain/${{ matrix.target }}/
+      # - uses: actions/upload-artifact@v3
+      #   with:
+      #     name: xcc-${{ matrix.host }}-${{ matrix.target }}.tar.gz
+      #     path: xcc-${{ matrix.host }}-${{ matrix.target }}.tar.gz
